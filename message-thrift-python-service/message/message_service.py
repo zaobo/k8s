@@ -9,39 +9,41 @@ import smtplib
 from email.mime.text import MIMEText
 from email.header import Header
 
-sender = 'imoocd@163.com'
-authCode = 'aA111111'
+sender = 'zhangab1113@163.com'
+authCode = 'zhangaobo0921'
+
+
 class MessageServiceHandler:
 
     def sendMobileMessage(self, mobile, message):
-        print ("sendMobileMessage, mobile:"+mobile+", message:"+message)
+        print("sendMobileMessage, mobile:" + mobile, ", message:" + message)
         return True
 
     def sendEmailMessage(self, email, message):
-        print ("sendEmailMessage, email:"+email+", message:"+message)
+        print("sendEmailMessage, email:" + email, ", message:" + message)
         messageObj = MIMEText(message, "plain", "utf-8")
         messageObj['From'] = sender
         messageObj['To'] = email
         messageObj['Subject'] = Header('慕课网邮件', 'utf-8')
+
         try:
-            smtpObj = smtplib.SMTP('smtp.163.com')
+            smtpObj = smtplib.SMTP('smpt.163.com')
             smtpObj.login(sender, authCode)
             smtpObj.sendmail(sender, [email], messageObj.as_string())
-            print ("send mail success")
-            return True
-        except smtplib.SMTPException:
-            print ("send mail failed!")
-            return False
+        except smtplib.SMTPException as ex:
+            print("send mail failed!")
+        print("send mail success")
+        return True
 
 
 if __name__ == '__main__':
     handler = MessageServiceHandler()
     processor = MessageService.Processor(handler)
-    transport = TSocket.TServerSocket(None, "9090")
+    transport = TSocket.TServerSocket("localhost", "9090")
     tfactory = TTransport.TFramedTransportFactory()
     pfactory = TBinaryProtocol.TBinaryProtocolFactory()
 
     server = TServer.TSimpleServer(processor, transport, tfactory, pfactory)
-    print ("python thrift server start")
+    print("python thrift server start")
     server.serve()
-    print ("python thrift server exit")
+    print("python thrift server stop")

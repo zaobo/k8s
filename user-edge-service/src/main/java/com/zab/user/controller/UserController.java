@@ -1,8 +1,8 @@
 package com.zab.user.controller;
 
+import com.alibaba.fastjson.JSON;
 import com.zab.thrift.user.UserInfo;
 import com.zab.thrift.user.dto.UserDTO;
-import com.zab.user.redis.RedisClient;
 import com.zab.user.response.LoginResponse;
 import com.zab.user.response.Response;
 import com.zab.user.thrift.ServiceProvider;
@@ -11,38 +11,32 @@ import org.apache.thrift.TException;
 import org.apache.tomcat.util.buf.HexUtils;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Controller;
-import org.springframework.web.bind.annotation.RequestHeader;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestMethod;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.ResponseBody;
+import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.web.bind.annotation.*;
 
+import javax.annotation.Resource;
 import java.security.MessageDigest;
 import java.util.Random;
+import java.util.concurrent.TimeUnit;
 
-/**
- * Created by Michael on 2017/10/30.
- */
-@Controller
+@RestController
 @RequestMapping("/user")
 public class UserController {
 
     @Autowired
     private ServiceProvider serviceProvider;
 
-    @Autowired
-    private RedisClient redisClient;
+    @Resource(name = "stringObjectRedisTemplate")
+    private RedisTemplate<String, String> redisTemplate;
 
-    @RequestMapping(value="/login", method = RequestMethod.GET)
+    @RequestMapping(value = "/login", method = RequestMethod.GET)
     public String login() {
         return "login";
     }
 
-    @RequestMapping(value="/login", method = RequestMethod.POST)
-    @ResponseBody
-    public Response login(@RequestParam("username")String username,
-                          @RequestParam("password")String password) {
+    @RequestMapping(value = "/login", method = RequestMethod.POST)
+    public Response login(@RequestParam("username") String username,
+                          @RequestParam("password") String password) {
 
         //1. 验证用户名密码
         UserInfo userInfo = null;
@@ -52,10 +46,10 @@ public class UserController {
             e.printStackTrace();
             return Response.USERNAME_PASSWORD_INVALID;
         }
-        if(userInfo==null) {
+        if (userInfo == null) {
             return Response.USERNAME_PASSWORD_INVALID;
         }
-        if(!userInfo.getPassword().equalsIgnoreCase(md5(password))) {
+        if (!userInfo.getPassword().equalsIgnoreCase(md5(password))) {
             return Response.USERNAME_PASSWORD_INVALID;
         }
 
@@ -63,32 +57,31 @@ public class UserController {
         String token = genToken();
 
         //3. 缓存用户
-        redisClient.set(token, toDTO(userInfo), 3600);
+        redisTemplate.opsForValue().set(token, toDTO(userInfo), 3600, TimeUnit.SECONDS);
 
         return new LoginResponse(token);
     }
 
     @RequestMapping(value = "/sendVerifyCode", method = RequestMethod.POST)
-    @ResponseBody
-    public Response sendVerifyCode(@RequestParam(value="mobile", required = false) String mobile,
-                                   @RequestParam(value="email", required = false) String email) {
+    public Response sendVerifyCode(@RequestParam(value = "mobile", required = false) String mobile,
+                                   @RequestParam(value = "email", required = false) String email) {
 
         String message = "Verify code is:";
         String code = randomCode("0123456789", 6);
         try {
 
             boolean result = false;
-            if(StringUtils.isNotBlank(mobile)) {
-                result = serviceProvider.getMessasgeService().sendMobileMessage(mobile, message+code);
-                redisClient.set(mobile, code);
-            } else if(StringUtils.isNotBlank(email)) {
-                result = serviceProvider.getMessasgeService().sendEmailMessage(email, message+code);
-                redisClient.set(email, code);
+            if (StringUtils.isNotBlank(mobile)) {
+                result = serviceProvider.getMessasgeService().sendMobileMessage(mobile, message + code);
+                redisTemplate.opsForValue().set(mobile, code);
+            } else if (StringUtils.isNotBlank(email)) {
+                result = serviceProvider.getMessasgeService().sendEmailMessage(email, message + code);
+                redisTemplate.opsForValue().set(email, code);
             } else {
                 return Response.MOBILE_OR_EMAIL_REQUIRED;
             }
 
-            if(!result) {
+            if (!result) {
                 return Response.SEND_VERIFYCODE_FAILED;
             }
         } catch (TException e) {
@@ -100,26 +93,25 @@ public class UserController {
 
     }
 
-    @RequestMapping(value="/register", method = RequestMethod.POST)
-    @ResponseBody
+    @RequestMapping(value = "/register", method = RequestMethod.POST)
     public Response register(@RequestParam("username") String username,
                              @RequestParam("password") String password,
-                             @RequestParam(value="mobile", required = false) String mobile,
-                             @RequestParam(value="email", required = false) String email,
+                             @RequestParam(value = "mobile", required = false) String mobile,
+                             @RequestParam(value = "email", required = false) String email,
                              @RequestParam("verifyCode") String verifyCode) {
 
-        if(StringUtils.isBlank(mobile) && StringUtils.isBlank(email)) {
+        if (StringUtils.isBlank(mobile) && StringUtils.isBlank(email)) {
             return Response.MOBILE_OR_EMAIL_REQUIRED;
         }
 
-        if(StringUtils.isNotBlank(mobile)) {
-            String redisCode = redisClient.get(mobile);
-            if(!verifyCode.equals(redisCode)) {
+        if (StringUtils.isNotBlank(mobile)) {
+            String redisCode = redisTemplate.opsForValue().get(mobile);
+            if (!verifyCode.equals(redisCode)) {
                 return Response.VERIFY_CODE_INVALID;
             }
-        }else {
-            String redisCode = redisClient.get(email);
-            if(!verifyCode.equals(redisCode)) {
+        } else {
+            String redisCode = redisTemplate.opsForValue().get(email);
+            if (!verifyCode.equals(redisCode)) {
                 return Response.VERIFY_CODE_INVALID;
             }
         }
@@ -139,17 +131,16 @@ public class UserController {
         return Response.SUCCESS;
     }
 
-    @RequestMapping(value="/authentication", method = RequestMethod.POST)
-    @ResponseBody
+    @RequestMapping(value = "/authentication", method = RequestMethod.POST)
     public UserDTO authentication(@RequestHeader("token") String token) {
 
-        return redisClient.get(token);
+        return JSON.parseObject(redisTemplate.opsForValue().get(token), UserDTO.class);
     }
 
-    private UserDTO toDTO(UserInfo userInfo) {
+    private String toDTO(UserInfo userInfo) {
         UserDTO userDTO = new UserDTO();
         BeanUtils.copyProperties(userInfo, userDTO);
-        return userDTO;
+        return JSON.toJSONString(userDTO);
     }
 
     private String genToken() {
@@ -160,7 +151,7 @@ public class UserController {
         StringBuilder result = new StringBuilder(size);
 
         Random random = new Random();
-        for(int i=0;i<size;i++) {
+        for (int i = 0; i < size; i++) {
             int loc = random.nextInt(s.length());
             result.append(s.charAt(loc));
         }

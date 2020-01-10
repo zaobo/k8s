@@ -1,8 +1,5 @@
 package com.zab.user.response;
 
-/**
- * Created by Michael on 2017/10/30.
- */
 public class LoginResponse extends Response {
 
     private String token;

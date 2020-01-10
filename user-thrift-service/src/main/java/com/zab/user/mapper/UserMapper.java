@@ -5,11 +5,10 @@ import org.apache.ibatis.annotations.Insert;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
+import org.springframework.stereotype.Component;
 
-/**
- * Created by Michael on 2017/10/28.
- */
 @Mapper
+@Component
 public interface UserMapper {
 
     @Select("select id,username, password, real_name as realName," +

@@ -1,15 +1,14 @@
 package com.zab.user;
 
+import org.mybatis.spring.annotation.MapperScan;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
-/**
- * Created by Michael on 2017/10/28.
- */
 @SpringBootApplication
-public class ServiceApplication {
+@MapperScan("com.zab.user.mapper")
+public class ThriftServiceApplication {
 
     public static void main(String args[]) {
-        SpringApplication.run(ServiceApplication.class, args);
+        SpringApplication.run(ThriftServiceApplication.class, args);
     }
 }

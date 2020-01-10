@@ -7,19 +7,14 @@ import org.apache.thrift.TException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-/**
- * Created by Michael on 2017/10/28.
- */
 @Service
 public class UserSerivceImpl implements UserService.Iface {
-
 
     @Autowired
     private UserMapper userMapper;
 
     @Override
     public UserInfo getUserById(int id) throws TException {
-
         return userMapper.getUserById(id);
     }
 
