@@ -18,7 +18,7 @@
     <properties>
         <java.version>1.8</java.version>
         <libthrift>0.10.0</libthrift>
-        <mysql-connector>5.1.6</mysql-connector>
+        <mysql-connector>8.0.16</mysql-connector>
         <fastjson>1.2.56</fastjson>
         <lombok>1.18.6</lombok>
         <druid.version>1.1.20</druid.version>
