@@ -29,7 +29,7 @@
         <spring-cloud.version>Greenwich.RELEASE</spring-cloud.version>
         <hystrix>1.2.7.RELEASE</hystrix>
         <feign-core>10.1.0</feign-core>
-        <jackson-databind>2.9.8</jackson-databind>
+        <jackson-databind>2.9.10.8</jackson-databind>
         <guava>20.0</guava>
         <servlet-api>2.5</servlet-api>
         <dubbo-spring>0.2.0</dubbo-spring>
